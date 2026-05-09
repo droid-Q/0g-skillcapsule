@@ -1,6 +1,10 @@
 .DS_Store
 .env
 .idea
+DESIGN.md
+AGENTS.md
+CLAUDE.md
+promo-video/
 node_modules
 dist
 coverage
