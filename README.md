@@ -13,7 +13,7 @@ The product is designed for demo quality first: polished marketplace UI, creator
 - `apps/web`: Vue 3 + Vite frontend
 - `apps/server`: Rust + Axum API and run orchestrator
 - `contracts`: Solidity registry contract plus compile/test/deploy scripts
-- `docs`: architecture, demo script, and submission packaging notes
+- `docs`: architecture notes and demo script
 
 ## Local run
 
