@@ -1,0 +1,13 @@
+{
+  "name": "0g-skillcapsule",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "dev": "npm --prefix apps/web run dev",
+    "server": "cargo run --manifest-path apps/server/Cargo.toml",
+    "web": "npm --prefix apps/web run dev",
+    "build": "cargo build --manifest-path apps/server/Cargo.toml && npm --prefix apps/web run build && npm --prefix contracts test",
+    "test": "cargo test --manifest-path apps/server/Cargo.toml && npm --prefix apps/web run test:run && npm --prefix contracts test",
+    "contracts:test": "npm --prefix contracts test"
+  }
+}

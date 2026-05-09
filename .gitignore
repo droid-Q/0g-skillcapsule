@@ -1,0 +1,12 @@
+.DS_Store
+.env
+.idea
+node_modules
+dist
+coverage
+target
+artifacts
+cache
+typechain-types
+*.db
+*.sqlite
