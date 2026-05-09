@@ -50,9 +50,3 @@ npm run deploy
 - `POST /api/capsules/:id/publish`
 - `POST /api/capsules/:id/run`
 - `GET /api/runs/:id`
-
-## Submission-ready assets
-
-- Architecture: [docs/architecture.md](/Users/droid/RustroverProjects/0g-skillcapsule/docs/architecture.md)
-- Demo script: [docs/demo-script.md](/Users/droid/RustroverProjects/0g-skillcapsule/docs/demo-script.md)
-- X post draft: [docs/x-post.md](/Users/droid/RustroverProjects/0g-skillcapsule/docs/x-post.md)
