@@ -32,7 +32,8 @@ Open the Vite URL, usually `http://127.0.0.1:5179`.
 
 - Without `ZERO_G_ROUTER_API_KEY`, the Rust server returns local demo outputs so the run flow stays usable.
 - With `VITE_0G_STORAGE_MODE=demo`, the frontend generates deterministic demo roots instead of sending wallet-signed uploads.
-- To send a real publish transaction, set `VITE_SKILLCAPSULE_REGISTRY_ADDRESS` after deploying the contract.
+- To send a real publish transaction from the Rust backend, set `ZERO_G_CHAIN_RPC_URL`, `SKILLCAPSULE_REGISTRY_CONTRACT_ADDRESS`, and `SKILLCAPSULE_PRIVATE_KEY`.
+- The existing manual publish API still accepts `registryContract`, `txHash`, and `explorerUrl` when you want the browser or a deploy script to submit the transaction.
 - To deploy the registry:
 
 ```bash
@@ -47,6 +48,9 @@ npm run deploy
 - `GET /api/capsules`
 - `POST /api/capsules`
 - `GET /api/capsules/:id`
+- `GET /api/chain/status`
+- `GET /api/capsules/:id/chain`
 - `POST /api/capsules/:id/publish`
+- `POST /api/capsules/:id/publish/onchain`
 - `POST /api/capsules/:id/run`
 - `GET /api/runs/:id`

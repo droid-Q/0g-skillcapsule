@@ -15,6 +15,11 @@ async fn test_app() -> Router {
         zero_g_router_base_url: "https://router-api-testnet.integratenetwork.work/v1".to_string(),
         zero_g_router_model: "demo-model".to_string(),
         zero_g_router_api_key: None,
+        zero_g_chain_rpc_url: None,
+        zero_g_chain_id: None,
+        skillcapsule_registry_contract: None,
+        skillcapsule_private_key: None,
+        zero_g_chain_explorer_tx_base: "https://chainscan-galileo.0g.ai/tx/".to_string(),
     };
     app::router(app::build_state(config).await.unwrap())
 }
@@ -32,6 +37,31 @@ async fn lists_seeded_capsules() {
     let text = String::from_utf8(body.to_vec()).unwrap();
     assert!(text.contains("Pitch Doctor"));
     assert!(text.contains("Grant Copilot"));
+}
+
+#[tokio::test]
+async fn reports_chain_status_without_requiring_chain_config() {
+    let response = test_app()
+        .await
+        .oneshot(
+            Request::get("/api/chain/status")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+    let body = response.into_body().collect().await.unwrap().to_bytes();
+    let status: serde_json::Value = serde_json::from_slice(&body).unwrap();
+    assert_eq!(
+        status.get("readEnabled").unwrap(),
+        &serde_json::Value::Bool(false)
+    );
+    assert_eq!(
+        status.get("writeEnabled").unwrap(),
+        &serde_json::Value::Bool(false)
+    );
 }
 
 #[tokio::test]
@@ -86,7 +116,10 @@ async fn creates_and_publishes_capsule() {
     assert_eq!(response.status(), StatusCode::OK);
     let body = response.into_body().collect().await.unwrap().to_bytes();
     let published: serde_json::Value = serde_json::from_slice(&body).unwrap();
-    assert_eq!(published.get("status").unwrap(), &serde_json::Value::String("published".to_string()));
+    assert_eq!(
+        published.get("status").unwrap(),
+        &serde_json::Value::String("published".to_string())
+    );
     assert_eq!(
         published.pointer("/manifest/agentTokenId").unwrap(),
         &serde_json::Value::String("22".to_string())

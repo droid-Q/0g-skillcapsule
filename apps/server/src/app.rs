@@ -11,12 +11,13 @@ use uuid::Uuid;
 
 use crate::{
     ai::{ZeroGComputeClient, build_proof_record},
+    chain::ChainClient,
     config::Config,
     db,
     error::ApiError,
     models::{
-        Capsule, CapsuleRun, CreateCapsuleRequest, CreateRunRequest, PublishCapsuleRequest,
-        RunStatus,
+        Capsule, CapsuleRun, ChainCapsuleRecord, ChainPublishRequest, ChainPublishResponse,
+        ChainStatus, CreateCapsuleRequest, CreateRunRequest, PublishCapsuleRequest, RunStatus,
     },
 };
 
@@ -25,6 +26,7 @@ pub struct AppState {
     pub config: Config,
     pub pool: sqlx::SqlitePool,
     pub ai: ZeroGComputeClient,
+    pub chain: ChainClient,
 }
 
 pub async fn build_state(config: Config) -> anyhow::Result<Arc<AppState>> {
@@ -34,7 +36,19 @@ pub async fn build_state(config: Config) -> anyhow::Result<Arc<AppState>> {
         config.zero_g_router_model.clone(),
         config.zero_g_router_api_key.clone(),
     );
-    Ok(Arc::new(AppState { config, pool, ai }))
+    let chain = ChainClient::new(
+        config.zero_g_chain_rpc_url.clone(),
+        config.zero_g_chain_id,
+        config.skillcapsule_registry_contract.clone(),
+        config.skillcapsule_private_key.clone(),
+        config.zero_g_chain_explorer_tx_base.clone(),
+    );
+    Ok(Arc::new(AppState {
+        config,
+        pool,
+        ai,
+        chain,
+    }))
 }
 
 pub fn router(state: Arc<AppState>) -> Router {
@@ -51,9 +65,15 @@ pub fn router(state: Arc<AppState>) -> Router {
 
     Router::new()
         .route("/health", get(health))
+        .route("/api/chain/status", get(chain_status))
         .route("/api/capsules", get(list_capsules).post(create_capsule))
         .route("/api/capsules/{id}", get(get_capsule))
+        .route("/api/capsules/{id}/chain", get(get_capsule_chain))
         .route("/api/capsules/{id}/publish", post(publish_capsule))
+        .route(
+            "/api/capsules/{id}/publish/onchain",
+            post(publish_capsule_onchain),
+        )
         .route("/api/capsules/{id}/run", post(run_capsule))
         .route("/api/runs/{id}", get(get_run))
         .with_state(state)
@@ -63,6 +83,10 @@ pub fn router(state: Arc<AppState>) -> Router {
 
 async fn health() -> Json<serde_json::Value> {
     Json(serde_json::json!({ "status": "ok" }))
+}
+
+async fn chain_status(State(state): State<Arc<AppState>>) -> Json<ChainStatus> {
+    Json(state.chain.status())
 }
 
 async fn list_capsules(State(state): State<Arc<AppState>>) -> Result<Json<Vec<Capsule>>, ApiError> {
@@ -86,6 +110,21 @@ async fn get_capsule(
     )?))
 }
 
+async fn get_capsule_chain(
+    State(state): State<Arc<AppState>>,
+    Path(id): Path<Uuid>,
+) -> Result<Json<ChainCapsuleRecord>, ApiError> {
+    if !state.chain.read_enabled() {
+        return Err(ApiError::bad_request(
+            "ZERO_G_CHAIN_RPC_URL and SKILLCAPSULE_REGISTRY_CONTRACT_ADDRESS are required.",
+        ));
+    }
+    let capsule = db::get_capsule(&state.pool, id)
+        .await
+        .map_err(|_| ApiError::not_found("Capsule was not found."))?;
+    Ok(Json(state.chain.get_capsule(&capsule).await?))
+}
+
 async fn publish_capsule(
     State(state): State<Arc<AppState>>,
     Path(id): Path<Uuid>,
@@ -107,6 +146,54 @@ async fn publish_capsule(
     )
     .await?;
     Ok(Json(capsule))
+}
+
+async fn publish_capsule_onchain(
+    State(state): State<Arc<AppState>>,
+    Path(id): Path<Uuid>,
+    Json(input): Json<ChainPublishRequest>,
+) -> Result<Json<ChainPublishResponse>, ApiError> {
+    if !state.chain.write_enabled() {
+        return Err(ApiError::bad_request(
+            "ZERO_G_CHAIN_RPC_URL, SKILLCAPSULE_REGISTRY_CONTRACT_ADDRESS, and SKILLCAPSULE_PRIVATE_KEY are required.",
+        ));
+    }
+    let capsule = db::get_capsule(&state.pool, id)
+        .await
+        .map_err(|_| ApiError::not_found("Capsule was not found."))?;
+    let version = input.version.unwrap_or(capsule.version);
+    if version < 1 {
+        return Err(ApiError::bad_request("version must be greater than zero."));
+    }
+    let agent_token_id = input
+        .agent_token_id
+        .as_deref()
+        .or(capsule.manifest.agent_token_id.as_deref());
+    let agent_token_id = ChainClient::parse_agent_token_id(agent_token_id)?;
+    let chain = state
+        .chain
+        .publish_capsule(
+            &capsule,
+            input.registry_contract.as_deref(),
+            version as u64,
+            agent_token_id,
+        )
+        .await?;
+    let updated = db::publish_capsule(
+        &state.pool,
+        id,
+        chain.registry_contract.clone(),
+        chain.tx_hash.clone(),
+        chain.explorer_url.clone(),
+        Some(agent_token_id.to_string()),
+        Some(version),
+    )
+    .await?;
+
+    Ok(Json(ChainPublishResponse {
+        capsule: updated,
+        chain,
+    }))
 }
 
 async fn run_capsule(

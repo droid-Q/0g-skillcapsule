@@ -169,6 +169,62 @@ pub struct CreateRunRequest {
     pub task_input: String,
 }
 
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ChainPublishRequest {
+    #[serde(default)]
+    pub registry_contract: Option<String>,
+    #[serde(default)]
+    pub agent_token_id: Option<String>,
+    #[serde(default)]
+    pub version: Option<i64>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct ChainStatus {
+    pub read_enabled: bool,
+    pub write_enabled: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub rpc_url: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub chain_id: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub registry_contract: Option<String>,
+    pub explorer_tx_base_url: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct ChainCapsuleRecord {
+    pub capsule_key: String,
+    pub owner: String,
+    pub manifest_root: String,
+    pub agent_token_id: String,
+    pub version: u64,
+    pub status: CapsuleStatus,
+    pub updated_at: u64,
+    pub exists: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct ChainPublishResult {
+    pub capsule_key: String,
+    pub registry_contract: String,
+    pub tx_hash: String,
+    pub explorer_url: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub block_number: Option<u64>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct ChainPublishResponse {
+    pub capsule: Capsule,
+    pub chain: ChainPublishResult,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct ApiErrorBody {
